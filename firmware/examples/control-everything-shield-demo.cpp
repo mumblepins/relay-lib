@@ -1,24 +1,29 @@
-// This #include statement was automatically added by the Spark IDE.
+// For use with the ControlEverything.com relay board (or other board that uses the MCP23008 I2C expander)
+// NOTE:  You will need to also import the MCP23008-I2C library as well.
+
 #include "relay-lib/relay-lib.h"
+#include "MCP23008-I2C/MCP23008-I2C.h"
 
-// For current Particle relay shield
-#define RELAY1_PIN D3
-#define RELAY2_PIN D4
-#define RELAY3_PIN D5
-#define RELAY4_PIN D6
+Adafruit_MCP23008 mcp;
+RelayLib relay[5];
 
-// For original Spark relay shield
-// #define RELAY1_PIN D0
-// #define RELAY2_PIN D1
-// #define RELAY3_PIN D2
-// #define RELAY4_PIN D3
+int relayControl (String command);
 
-RelayLib relay[] = {RelayLib(RELAY1_PIN), RelayLib(RELAY2_PIN), RelayLib(RELAY3_PIN), RelayLib(RELAY4_PIN)};
+void mcpDigitalWrite(uint16_t p, uint8_t d) {
+    mcp.digitalWrite(p, d);
+}
 
 
 void setup()
 {
-   Particle.function("relay", relayControl);
+  mcp.begin(1);
+  for (int i=0; i<4; i++) {
+    mcp.pinMode(i,OUTPUT);
+    relay[i].init(mcpDigitalWrite, i);
+    delay(1);
+  }
+  relay[4].init(D7);
+  Particle.function("relay", relayControl);
 }
 
 void loop()
@@ -31,7 +36,7 @@ int relayControl(String command)
   // parse the relay number
   int relayNumber = command.charAt(1) - '0';
   // do a sanity check
-  if (relayNumber < 1 || relayNumber > 4) return -1;
+  if (relayNumber < 1 || relayNumber > 5) return -1;
 
   // find out the state of the relay
   if (command.substring(3,5) == "ON") relay[relayNumber - 1].on();
