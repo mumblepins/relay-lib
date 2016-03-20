@@ -1,104 +1,171 @@
+
 #include "relay-lib.h"
 
-//
-// The constructor sets up a single relay, specified by the Pin that relay is attached to
-
-//
-// The constructor will also properly set the assigned pin to OUTPUT.
-//
-RelayLib::RelayLib(int _relayPin, int _state)
+RelayLib::RelayLib()
 {
-  init(_relayPin, _state);
+  _relayState = LOW;
+  _action = ACTIVE_HIGH;
+  _timerSelect = USING_MILLIS;
+  _pulseTime = 300;
 }
 
+RelayLib::RelayLib(uint8_t relayPin)
+{
+  _relayPin = relayPin;
+  _relayState = LOW;
+  _action = ACTIVE_HIGH;
+  _timerSelect = USING_MILLIS;
+  _pulseTime = 300;
+}
 
 // Constructor for custom digitalWrite function NOTE: will not set pinMode of output pin
 // function must be of type `void function(uint16_t, uint8_t)`
-RelayLib::RelayLib(dig_write_func_t* _digWrite, int _relayPin, int _state) {
-  init(_digWrite, _relayPin, _state);
-}
-
-void RelayLib::init(int _relayPin, int _state)
+RelayLib::RelayLib(dig_write_func_t* digWrite, int relayPin, int state)
 {
-  digWrite=digitalWrite;
-  relayPin=_relayPin;
-  pinMode(relayPin, OUTPUT);
-
-  if (_state == LOW) {
-    relayState=LOW;
-    off();
-  }
-  else {
-    relayState=HIGH;
-    on();
-  }
+  _relayPin = relayPin;
+  _relayState = state;
+  _digWrite = digWrite;
+  this->init(_relayPin, _relayState, _action, _pulseTime);
 }
 
-void RelayLib::init(dig_write_func_t* _digWrite, int _relayPin, int _state) {
-  digWrite=_digWrite;
-  relayPin=_relayPin;
-
-  if (_state == LOW) {
-    relayState=LOW;
-    off();
-  }
-  else {
-    relayState=HIGH;
-    on();
-  }
+void RelayLib::init()
+{
+  this->init(_relayPin, _relayState, _action, _pulseTime);
+}
+void RelayLib::init(const int relayPin)
+{
+  this->init(relayPin, _relayState, _action, _pulseTime);
 }
 
-// Turns the relay on.
+void RelayLib::init(const int relayPin, int initialState, RelayAction action)
+{
+  this->init(relayPin, initialState, action, _pulseTime);
+}
+
+void RelayLib::init(const int relayPin, int initialState, RelayAction action, uint16_t pulseMillis)
+{
+  _relayPin = relayPin;
+  pinMode(_relayPin, OUTPUT);
+  _relayState = initialState;
+  _action = action;
+  _pulseTime = pulseMillis;
+  this->setRelay(_relayState);
+}
+
 void RelayLib::on()
 {
-  digitalWrite(relayPin, HIGH);
-  relayState=HIGH;
+  this->setRelay(HIGH);
 }
 
-// Turns the relay off.
 void RelayLib::off()
 {
-  digitalWrite(relayPin, LOW);
-  relayState=LOW;
+  this->setRelay(LOW);
 }
 
-//Toggles the state of the relay
+void RelayLib::setRelay(int newState)
+{
+  _relayState = newState;
+  digitalWrite(_relayPin, (_action == ACTIVE_HIGH)? _relayState : !_relayState);
+}
+
 void RelayLib::toggle()
 {
-  if (relayState==HIGH) {
-    off();
-  } else {
-    on();
+  this->setRelay(!this->getState());
+}
+
+void RelayLib::pulse()
+{
+  this->pulse(_pulseTime, _timerSelect);
+}
+
+void RelayLib::pulse(unsigned long pulseTime, TimeIncrements timer)
+{
+  this->on();
+  timer == USING_MICROS? delayMicroseconds(pulseTime) : delay(pulseTime);
+  this->off();
+}
+
+void RelayLib::setPulse(int pulseTime)
+{
+  _pulseTime = pulseTime;
+}
+
+void RelayLib::noBlockPulse(unsigned long duration, TimeIncrements timer)
+{
+  _timerSelect = timer;
+  _commandPulseTime = duration;
+  _lastTime = _timerSelect? micros() : millis();
+  _activePulse = true;
+  this->on();
+}
+
+void RelayLib::noBlockPulse()
+{
+  this->noBlockPulse(_pulseTime);
+}
+
+void RelayLib::update()
+{
+  this->update(_timerSelect? micros() : millis());
+}
+
+void RelayLib::update(unsigned long time)
+{
+  if(_activePulse)
+  {
+    unsigned long elapsedTime = time - _lastTime;
+    if(elapsedTime > _commandPulseTime)
+    {
+      _activePulse = false;
+      this->off();
+    }
   }
 }
 
-// Pulse relay on, then off.  If relay is on, turn off after delay time
-void RelayLib::pulse(int delayTime) {
-  on();
-  delay(delayTime);
-  off();
-}
-
-// Returns the state of the relay (LOW/0 or HIGH/1)
-int RelayLib::state()
+void RelayLib::pulse(int pulseMillis)
 {
-  return(relayState);
+  this->on();
+  delay(pulseMillis);
+  this->off();
 }
 
-// If the relay is on, returns true, otherwise returns false
+// STATE GETTERS
+
+bool RelayLib::getState()
+{
+  return _relayState;
+}
 bool RelayLib::isRelayOn()
 {
-  if (relayState==HIGH)
-    return true;
-  else
-    return false;
+  return _relayState;
 }
-
-// If the relay is off, returns true, otherwise returns false
 bool RelayLib::isRelayOff()
 {
-  if (relayState==LOW)
-    return true;
+  return !_relayState;
+}
+bool RelayLib::isOn()
+{
+  return _relayState;
+}
+bool RelayLib::isOff()
+{
+  return !_relayState;
+}
+
+//
+
+void RelayLib::init(dig_write_func_t* digWrite, int relayPin, int state)
+{
+  _digWrite = digWrite;
+  _relayPin = relayPin;
+  _relayState = state;
+
+  if (_relayState)
+  {
+    this->on();
+  }
   else
-    return false;
+  {
+    this->off();
+  }
 }
