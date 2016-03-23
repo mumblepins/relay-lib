@@ -1,13 +1,37 @@
+/*
+   The MIT License (MIT)
+   Copyright (c) 2016 Daniel Sullivan (mumblepins)
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+      of this software and associated documentation files (the "Software"), to
+      deal in the Software without restriction, including without limitation the
+      rights to use, copy, modify, merge, publish, distribute, sublicense,
+      and/or sell copies of the Software, and to permit persons to
+       whom the
+      Software is furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+      all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+      THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+      DEALINGS IN THE SOFTWARE.
+
+
+   Based on
+      http://awtfy.com/2011/07/14/a-too-simple-arduino-library-for-handling-the-seeeduino-relay-shield-and-generic-relays/
+
+
+ */
 
 #ifndef _RELAY_LIB
 #define _RELAY_LIB
 
 #include "application.h"
-
-// Based on
-// http://awtfy.com/2011/07/14/a-too-simple-arduino-library-for-handling-the-seeeduino-relay-shield-and-generic-relays/
-
-
 
 typedef void (dig_write_func_t) (pin_t,
                                  uint8_t);
@@ -26,7 +50,6 @@ enum TimeIncrements : uint8_t {
 };
 
 class RelayLib {
-
 public:
 
   RelayLib();
@@ -40,21 +63,6 @@ public:
   RelayLib(dig_write_func_t * digWrite, pin_mode_func_t * pMode,
            pin_t relayPin, uint8_t initialState = LOW,
            RelayAction action = ACTIVE_HIGH, uint32_t pulseMillis = 300);
-
-
-  // template < typename T >
-  // RelayLib(void (T::*write_func)(pin_t, uint8_t),
-  //          void (T::*mode_func)(pin_t, PinMode), T * instance, pin_t relayPin) {
-  //   _relayPin       = relayPin;
-  //   _relayState     = LOW;
-  //   _action         = ACTIVE_HIGH;
-  //   _timerIncrement = USING_MILLIS;
-  //   _pulseTime      = 300;
-  //
-  //   using namespace std::placeholders;
-  //   _digWrite = std::bind(write_func, instance, _1, _2);
-  //   _pinMode  = std::bind(mode_func, instance, _1, _2);
-  // }
 
   void init();
   void init(pin_t relayPin);
@@ -80,19 +88,6 @@ public:
             uint8_t           initialState,
             RelayAction       action,
             uint32_t          pulseMillis);
-
-
-  // template < typename T>
-
-// void init(void (T::*write_func)(pin_t, uint8_t),
-//           void (T::*mode_func)(pin_t, PinMode), T *instance, pin_t relayPin)
-// {
-//   using namespace std::placeholders;
-//
-//   this->init(std::bind(write_func, instance, _1, _2),
-//              std::bind(mode_func, instance, _1, _2), relayPin);
-// }
-
 
   void setRelay(uint8_t newState);
   void on();
@@ -130,4 +125,4 @@ private:
   pin_mode_func_t  *_pinMode;
 };
 
-#endif /* ifndef _RELAY_LIB */
+ #endif /* ifndef _RELAY_LIB */
