@@ -3,53 +3,115 @@
 
 RelayLib::RelayLib()
 {
-  _relayState = LOW;
-  _action = ACTIVE_HIGH;
-  _timerSelect = USING_MILLIS;
-  _pulseTime = 300;
+  _relayState     = LOW;
+  _action         = ACTIVE_HIGH;
+  _timerIncrement = USING_MILLIS;
+  _pulseTime      = 300;
+  _digWrite       = digitalWrite;
+  _pinMode        = pinMode;
 }
 
-RelayLib::RelayLib(uint8_t relayPin)
+RelayLib::RelayLib(const pin_t relayPin)
 {
-  _relayPin = relayPin;
-  _relayState = LOW;
-  _action = ACTIVE_HIGH;
-  _timerSelect = USING_MILLIS;
-  _pulseTime = 300;
+  _relayPin       = relayPin;
+  _relayState     = LOW;
+  _action         = ACTIVE_HIGH;
+  _timerIncrement = USING_MILLIS;
+  _pulseTime      = 300;
+  _digWrite       = digitalWrite;
+  _pinMode        = pinMode;
 }
 
-// Constructor for custom digitalWrite function NOTE: will not set pinMode of output pin
-// function must be of type `void function(uint16_t, uint8_t)`
-RelayLib::RelayLib(dig_write_func_t* digWrite, int relayPin, int state)
-{
-  _relayPin = relayPin;
-  _relayState = state;
-  _digWrite = digWrite;
-  this->init(_relayPin, _relayState, _action, _pulseTime);
+RelayLib::RelayLib(const pin_t relayPin, const uint8_t initialState,
+                   const RelayAction action, const uint32_t pulseMillis) {
+  _relayPin       = relayPin;
+  _relayState     = initialState;
+  _action         = action;
+  _timerIncrement = USING_MILLIS;
+  _pulseTime      = pulseMillis;
+  _digWrite       = digitalWrite;
+
+  _pinMode = pinMode;
+}
+
+RelayLib::RelayLib(dig_write_func_t *digWrite,
+                   pin_mode_func_t  *pMode,
+                   const pin_t       relayPin) {
+  _relayPin       = relayPin;
+  _relayState     = LOW;
+  _action         = ACTIVE_HIGH;
+  _timerIncrement = USING_MILLIS;
+  _pulseTime      = 300;
+  _digWrite       = digWrite;
+  _pinMode        = pMode;
+}
+
+RelayLib::RelayLib(dig_write_func_t *digWrite,
+                   pin_mode_func_t  *pMode,
+                   const pin_t       relayPin,
+                   const uint8_t     initialState,
+                   const RelayAction action,
+                   const uint32_t    pulseMillis) {
+  _relayPin       = relayPin;
+  _relayState     = initialState;
+  _action         = action;
+  _timerIncrement = USING_MILLIS;
+  _pulseTime      = pulseMillis;
+  _digWrite       = digWrite;
+  _pinMode        = pMode;
 }
 
 void RelayLib::init()
 {
   this->init(_relayPin, _relayState, _action, _pulseTime);
 }
-void RelayLib::init(const int relayPin)
+
+void RelayLib::init(const pin_t relayPin)
 {
   this->init(relayPin, _relayState, _action, _pulseTime);
 }
 
-void RelayLib::init(const int relayPin, int initialState, RelayAction action)
+void RelayLib::init(const pin_t relayPin, const uint8_t initialState,
+                    const RelayAction action)
 {
   this->init(relayPin, initialState, action, _pulseTime);
 }
 
-void RelayLib::init(const int relayPin, int initialState, RelayAction action, uint16_t pulseMillis)
+void RelayLib::init(const pin_t relayPin, const uint8_t initialState,
+                    const RelayAction action, const uint32_t pulseMillis)
 {
   _relayPin = relayPin;
-  pinMode(_relayPin, OUTPUT);
+  _pinMode(_relayPin, OUTPUT);
   _relayState = initialState;
-  _action = action;
-  _pulseTime = pulseMillis;
+  _action     = action;
+  _pulseTime  = pulseMillis;
   this->setRelay(_relayState);
+}
+
+void RelayLib::init(dig_write_func_t *digitalWrite,
+                    pin_mode_func_t  *pMode,
+                    const pin_t       relayPin) {
+  _digWrite = digitalWrite;
+  _pinMode  = pMode;
+  this->init(relayPin, _relayState, _action, _pulseTime);
+}
+
+void RelayLib::init(dig_write_func_t *digitalWrite,
+                    pin_mode_func_t  *pMode,
+                    const pin_t       relayPin,
+                    const uint8_t     initialState,
+                    const RelayAction action) {
+  _digWrite = digitalWrite;
+  _pinMode  = pMode;
+  this->init(relayPin, initialState, action, _pulseTime);
+}
+
+void RelayLib::init(dig_write_func_t *digitalWrite, pin_mode_func_t *pMode,
+                    const pin_t relayPin, const uint8_t initialState,
+                    const RelayAction action, const uint32_t pulseMillis) {
+  _digWrite = digitalWrite;
+  _pinMode  = pMode;
+  this->init(relayPin, initialState, action, pulseMillis);
 }
 
 void RelayLib::on()
@@ -59,13 +121,13 @@ void RelayLib::on()
 
 void RelayLib::off()
 {
-  this->setRelay(LOW);
+  // this->setRelay(LOW);
 }
 
-void RelayLib::setRelay(int newState)
+void RelayLib::setRelay(const uint8_t newState)
 {
   _relayState = newState;
-  digitalWrite(_relayPin, (_action == ACTIVE_HIGH)? _relayState : !_relayState);
+  _digWrite(_relayPin, (_action == ACTIVE_HIGH) ? _relayState : !_relayState);
 }
 
 void RelayLib::toggle()
@@ -75,27 +137,30 @@ void RelayLib::toggle()
 
 void RelayLib::pulse()
 {
-  this->pulse(_pulseTime, _timerSelect);
+  this->pulse(_pulseTime, _timerIncrement);
 }
 
-void RelayLib::pulse(unsigned long pulseTime, TimeIncrements timer)
+void RelayLib::pulse(const uint32_t       pulseTime,
+                     const TimeIncrements timerIncrement)
 {
   this->on();
-  timer == USING_MICROS? delayMicroseconds(pulseTime) : delay(pulseTime);
+  (timerIncrement == USING_MICROS) ? delayMicroseconds(pulseTime) : delay(
+    pulseTime);
   this->off();
 }
 
-void RelayLib::setPulse(int pulseTime)
+void RelayLib::setPulse(const uint32_t pulseTime)
 {
   _pulseTime = pulseTime;
 }
 
-void RelayLib::noBlockPulse(unsigned long duration, TimeIncrements timer)
+void RelayLib::noBlockPulse(const uint32_t       duration,
+                            const TimeIncrements timerIncrement)
 {
-  _timerSelect = timer;
+  _timerIncrement   = timerIncrement;
   _commandPulseTime = duration;
-  _lastTime = _timerSelect? micros() : millis();
-  _activePulse = true;
+  _lastTime         = (_timerIncrement == USING_MICROS) ? micros() : millis();
+  _activePulse      = true;
   this->on();
 }
 
@@ -106,15 +171,16 @@ void RelayLib::noBlockPulse()
 
 void RelayLib::update()
 {
-  this->update(_timerSelect? micros() : millis());
+  this->update((_timerIncrement == USING_MICROS) ? micros() : millis());
 }
 
-void RelayLib::update(unsigned long time)
+void RelayLib::update(const uint32_t time)
 {
-  if(_activePulse)
+  if (_activePulse)
   {
     unsigned long elapsedTime = time - _lastTime;
-    if(elapsedTime > _commandPulseTime)
+
+    if (elapsedTime >= _commandPulseTime)
     {
       _activePulse = false;
       this->off();
@@ -122,7 +188,7 @@ void RelayLib::update(unsigned long time)
   }
 }
 
-void RelayLib::pulse(int pulseMillis)
+void RelayLib::pulse(const uint32_t pulseMillis)
 {
   this->on();
   delay(pulseMillis);
@@ -135,37 +201,23 @@ bool RelayLib::getState()
 {
   return _relayState;
 }
+
 bool RelayLib::isRelayOn()
 {
   return _relayState;
 }
+
 bool RelayLib::isRelayOff()
 {
   return !_relayState;
 }
+
 bool RelayLib::isOn()
 {
   return _relayState;
 }
+
 bool RelayLib::isOff()
 {
   return !_relayState;
-}
-
-//
-
-void RelayLib::init(dig_write_func_t* digWrite, int relayPin, int state)
-{
-  _digWrite = digWrite;
-  _relayPin = relayPin;
-  _relayState = state;
-
-  if (_relayState)
-  {
-    this->on();
-  }
-  else
-  {
-    this->off();
-  }
 }
